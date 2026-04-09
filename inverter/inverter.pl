@@ -1,6 +1,3 @@
-# dialog:
-# dialog --title "Some Title" --menu --stdout <width?0=auto> <height?0=auto> <num choices> [k, v]
-
 my ($device_id_file, $controller_mapping_file) = @ARGV;
 
 unless (defined $device_id_file) {
@@ -19,7 +16,8 @@ my $device_id = get_device_id($device_id_file);
 my (
 	$device_name,
 	$controller_config_order,
-	$controller_config_hotkeys
+	$controller_config_hotkeys,
+	$old_full_config_line,
 ) = get_controller_config($controller_mapping_file, $device_id);
 
 # To avoid reaching for something like an index map we just keep track
@@ -28,7 +26,9 @@ my @order = @$controller_config_order;
 my %hotkeys = %$controller_config_hotkeys;
 my @relevant_keys = grep(/leftx|lefty|rightx|righty|leftstick|rightstick/, @order);
 
-while($item = draw_main_menu(\@relevant_keys, \%hotkeys)) {
+my $last_choice = "a";
+while($item = draw_main_menu(\@relevant_keys, \%hotkeys, $last_choice)) {
+	$last_choice = $item;
 	if ($item eq "a") {
 		%hotkeys = swap_keys("leftx", "rightx", %hotkeys);
 		%hotkeys = swap_keys("lefty", "righty", %hotkeys);
@@ -47,6 +47,27 @@ while($item = draw_main_menu(\@relevant_keys, \%hotkeys)) {
 	} elsif ($item eq "h") {
 		%hotkeys = invert_key("righty", %hotkeys);
 	} elsif ($item eq "i") {
+		my $reformed_line = reform_line($device_id, $device_name, \@order, \%hotkeys);
+		last if ($old_full_config_line eq $reformed_line);
+
+		open(my $cm_file, "<", "$controller_mapping_file") or die "Could read controller file";
+		open(my $temp_file, ">", "$controller_mapping_file.tmp") or die "Could not create temp file";
+
+		while($line = <$cm_file>) {
+			if ($line =~ /^$device_id/) {
+				print $temp_file $reformed_line;
+			} else {
+				print $temp_file $line;
+			}
+		};
+
+		close($cm_file);
+		close($temp_file);
+		rename("$controller_mapping_file.tmp", $controller_mapping_file);
+		system("dialog --title \"FINISHED\" " .
+			"--msgbox " .
+			"\"Sucessfully updated config file\" " .
+			"10 30");
 		last;
 	}
 };
@@ -125,9 +146,9 @@ sub get_controller_config {
 				$hotkeys{$k} = $v;
 			}
 		}
-		return ($device_name, \@order, \%hotkeys);
+		return ($device_name, \@order, \%hotkeys, $line);
 	}
-	return (undef, undef, undef);
+	return (undef, undef, undef, undef);
 }
 
 sub print_hotkeys {
@@ -144,18 +165,18 @@ sub print_hotkeys {
 
 # UI
 sub draw_main_menu {
-	my ($relevant_keys, $hotkeys) = @_;
+	my ($relevant_keys, $hotkeys, $last_choice) = @_;
 	my %hotkeys = %$hotkeys;
 	my @relevant_keys = @$relevant_keys;
 	my $current_bindings = print_hotkeys(\@relevant_keys, \%hotkeys);
 	# Really janky workaround for having to get data out of command, we can't use
 	# backticks in the command to capture output, because the device isn't allowing
-	# the dialog to spawn, and the alternative is managing the menu in bash, which 
-	# to be fair might actually be a better approach.
+	# the dialog to spawn, and the alternative is managing the menu in bash
 	my $temp_file = "/tmp/menu_choice";
 
 	system("dialog " . 
 		"--backtitle \"Analog Stick Inverter by Gerhardus\" " .
+		"--default-item $last_choice " .
 		"--title \"Analog Stick Inverter\" " .
 		"--no-collapse " .
 		"--clear " .
@@ -181,8 +202,4 @@ sub draw_main_menu {
 	unlink($temp_file);
 	return $choice;
 }
-
-# my $main_menu_choice = draw_main_menu();
-# print "\n$main_menu_choice\n";
-
 
