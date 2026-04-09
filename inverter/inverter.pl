@@ -26,53 +26,30 @@ my (
 # of the insertion order of the hotkeys into the map manually
 my @order = @$controller_config_order;
 my %hotkeys = %$controller_config_hotkeys;
-my @relevant_keys = grep(/leftx|lefty|rightx|righty/, @order);
+my @relevant_keys = grep(/leftx|lefty|rightx|righty|leftstick|rightstick/, @order);
 
-
-print "\n---------ALL DATA--------\n";
-print $device_id;
-print "\n$device_name\n";
-foreach my $key (@order) {
-	print "$key: $hotkeys{$key}\n";
-}
-
-print "\n---------INITIAL--------\n";
-foreach my $key (@relevant_keys) {
-	print "$key: $hotkeys{$key}\n";
-}
-print "\n========================\n";
-
-print "\n---------ROTATE LEFT STICK--------\n";
-%hotkeys = swap_keys("leftx", "lefty", %hotkeys);
-
-foreach my $key (@relevant_keys) {
-	print "$key: $hotkeys{$key}\n";
-}
-
-print "\n---------ROTATE RIGHT STICK--------\n";
-%hotkeys = swap_keys("rightx", "righty", %hotkeys);
-
-foreach my $key (@relevant_keys) {
-	print "$key: $hotkeys{$key}\n";
-}
-
-print "\n---------INVERT LEFTX--------\n";
-%hotkeys = invert_key("leftx", %hotkeys);
-
-foreach my $key (@relevant_keys) {
-	print "$key: $hotkeys{$key}\n";
-}
-
-
-print "\n---------RE-INVERT LEFTX-----\n";
-%hotkeys = invert_key("leftx", %hotkeys);
-
-foreach my $key (@relevant_keys) {
-	print "$key: $hotkeys{$key}\n";
-}
-
-print "\n---------REFORM LINE--------\n";
-print(reform_line($device_id, $device_name, \@order, \%hotkeys));
+while($item = draw_main_menu(\@relevant_keys, \%hotkeys)) {
+	if ($item eq "a") {
+		%hotkeys = swap_keys("leftx", "rightx", %hotkeys);
+		%hotkeys = swap_keys("lefty", "righty", %hotkeys);
+	} elsif ($item eq "b") {
+		%hotkeys = swap_keys("leftstick", "rightstick", %hotkeys);
+	} elsif ($item eq "c") {
+		%hotkeys = swap_keys("leftx", "lefty", %hotkeys);
+	} elsif ($item eq "d") {
+		%hotkeys = swap_keys("rightx", "righty", %hotkeys);
+	} elsif ($item eq "e") {
+		%hotkeys = invert_key("leftx", %hotkeys);
+	} elsif ($item eq "f") {
+		%hotkeys = invert_key("lefty", %hotkeys);
+	} elsif ($item eq "g") {
+		%hotkeys = invert_key("rightx", %hotkeys);
+	} elsif ($item eq "h") {
+		%hotkeys = invert_key("righty", %hotkeys);
+	} elsif ($item eq "i") {
+		last;
+	}
+};
 
 # UTILS
 sub reform_line {
@@ -153,9 +130,24 @@ sub get_controller_config {
 	return (undef, undef, undef);
 }
 
+sub print_hotkeys {
+	my ($relevant_keys, $hotkeys) = @_;
+	my %hotkeys = %$hotkeys;
+	my @relevant_keys = @$relevant_keys;
+
+	my $acc = "";
+	foreach my $key (@relevant_keys) {
+		$acc .= "$key: $hotkeys{$key}\n";
+	}
+	return $acc
+}
 
 # UI
 sub draw_main_menu {
+	my ($relevant_keys, $hotkeys) = @_;
+	my %hotkeys = %$hotkeys;
+	my @relevant_keys = @$relevant_keys;
+	my $current_bindings = print_hotkeys(\@relevant_keys, \%hotkeys);
 	# Really janky workaround for having to get data out of command, we can't use
 	# backticks in the command to capture output, because the device isn't allowing
 	# the dialog to spawn, and the alternative is managing the menu in bash, which 
@@ -165,14 +157,21 @@ sub draw_main_menu {
 	system("dialog " . 
 		"--backtitle \"Analog Stick Inverter by Gerhardus\" " .
 		"--title \"Analog Stick Inverter\" " .
+		"--no-collapse " .
 		"--clear " .
-		"--menu \"Choose an option\" " .
+		"--menu \"$current_bindings\" " .
 		# WIDTH HEIGHT NUM OPTIONS
-		"0 0 3 " .
+		"0 0 9 " .
 		# OPTIONS
-		"a \"Swap Sticks\" " .
-		"b \"Do Thing\" " .
-		"c \"HELLO\" " .
+		"a \"BOTH:    SWAP\" " .
+		"b \"BOTH:    SWAP BTNS\" " .
+		"c \"LEFT:    ROTATE\" " .
+		"d \"RIGHT:   ROTATE\" " .
+		"e \"LEFT_X:  INVERT\" " .
+		"f \"LEFT_Y:  INVERT\" " .
+		"g \"RIGHT_X: INVERT\" " .
+		"h \"RIGHT_Y: INVERT\" " .
+		"i \"SAVE AND EXIT\" " .
 		"2> $temp_file"
 	);
 

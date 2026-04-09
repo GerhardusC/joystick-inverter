@@ -30,7 +30,6 @@ init_session() {
 }
 # -----------------------------------
 
-# Execute cleanup function on script exit (Normal, Interrupt, or Terminate)
 init_session
 
 # 2. Run Perl script
