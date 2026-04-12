@@ -36,7 +36,7 @@ sub handle_txt_input_file {
 	# of the insertion order of the hotkeys into the map manually
 	my @order = @$controller_config_order;
 	my %hotkeys = %$controller_config_hotkeys;
-	my @relevant_keys = grep(/leftx|lefty|rightx|righty|leftstick|rightstick/, @order);
+	my @relevant_keys = grep(/(:?left|right)(?:x|y|stick)/, @order);
 
 	my $last_choice = "a";
 	while($item = draw_controller_menu(\@relevant_keys, \%hotkeys, $last_choice, "TEXT")) {
