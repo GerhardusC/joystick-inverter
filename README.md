@@ -18,15 +18,17 @@ In other words, just add `inverter/` and `inverter.sh` to `EASYROMS/tools` on th
 In the ArkOS emulationstation main menu, selection `Options` -> `tools` -> `inverter`,
 and you will be presented with a list of options to interact with the joystick mappings.
 
+NOTE: X is UP-DOWN axis and Y is LEFT-RIGHT axis
+
 ### ACTIONS:
-- `BOTH:    SWAP`         --> Swaps the left analog stick with the right one
-- `BOTH:    SWAP BTNS`    --> Swaps the buttons when the analog sticks are pressed in
-- `LEFT:    ROTATE`       --> Corrects X-Y inversion of left analog stick
-- `RIGHT:   ROTATE`       --> Corrects X-Y inversion of right analog stick
-- `LEFT_X:  INVERT`       --> Inverts the left analog X axis direction
-- `LEFT_Y:  INVERT`       --> Inverts the left analog Y axis direction
-- `RIGHT_X: INVERT`       --> Inverts the right analog X axis direction
-- `RIGHT_Y: INVERT`       --> Inverts the right analog Y axis direction
+- `BOTH:    SWAP`           --> Swaps the left analog stick with the right one
+- `BOTH:    SWAP TRIGGERS`  --> Swaps the buttons when the analog sticks are pressed in
+- `LEFT:    SWAP AXES`      --> Corrects X-Y inversion of left analog stick
+- `RIGHT:   SWAP AXES`      --> Corrects X-Y inversion of right analog stick
+- `LEFT_X:  INVERT`         --> Inverts the left analog X axis direction
+- `LEFT_Y:  INVERT`         --> Inverts the left analog Y axis direction
+- `RIGHT_X: INVERT`         --> Inverts the right analog X axis direction
+- `RIGHT_Y: INVERT`         --> Inverts the right analog Y axis direction
 
 ### REMEMBER TO SAVE:
 `SAVE AND EXIT`         --> Writes the changes to `/roms/tools/PortMaster/gamecontrollerdb.txt`

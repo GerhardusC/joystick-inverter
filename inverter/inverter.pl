@@ -1,3 +1,5 @@
+#!/bin/perl
+
 my ($device_id_file, $controller_mapping_file) = @ARGV;
 
 unless (defined $device_id_file) {
@@ -11,66 +13,83 @@ unless (defined $controller_mapping_file) {
 	$controller_mapping_file = "/roms/tools/PortMaster/gamecontrollerdb.txt";
 }
 
-my $device_id = get_device_id($device_id_file);
+handle_txt_input_file($device_id_file, $controller_mapping_file);
 
-my (
-	$device_name,
-	$controller_config_order,
-	$controller_config_hotkeys,
-	$old_full_config_line,
-) = get_controller_config($controller_mapping_file, $device_id);
+sub handle_txt_input_file {
+	my ($device_id_file, $controller_mapping_file) = @_;
 
-# To avoid reaching for something like an index map we just keep track
-# of the insertion order of the hotkeys into the map manually
-my @order = @$controller_config_order;
-my %hotkeys = %$controller_config_hotkeys;
-my @relevant_keys = grep(/leftx|lefty|rightx|righty|leftstick|rightstick/, @order);
+	my $device_id = get_device_id($device_id_file);
 
-my $last_choice = "a";
-while($item = draw_main_menu(\@relevant_keys, \%hotkeys, $last_choice)) {
-	$last_choice = $item;
-	if ($item eq "a") {
-		%hotkeys = swap_keys("leftx", "rightx", %hotkeys);
-		%hotkeys = swap_keys("lefty", "righty", %hotkeys);
-	} elsif ($item eq "b") {
-		%hotkeys = swap_keys("leftstick", "rightstick", %hotkeys);
-	} elsif ($item eq "c") {
-		%hotkeys = swap_keys("leftx", "lefty", %hotkeys);
-	} elsif ($item eq "d") {
-		%hotkeys = swap_keys("rightx", "righty", %hotkeys);
-	} elsif ($item eq "e") {
-		%hotkeys = invert_key("leftx", %hotkeys);
-	} elsif ($item eq "f") {
-		%hotkeys = invert_key("lefty", %hotkeys);
-	} elsif ($item eq "g") {
-		%hotkeys = invert_key("rightx", %hotkeys);
-	} elsif ($item eq "h") {
-		%hotkeys = invert_key("righty", %hotkeys);
-	} elsif ($item eq "i") {
-		my $reformed_line = reform_line($device_id, $device_name, \@order, \%hotkeys);
-		last if ($old_full_config_line eq $reformed_line);
+	my (
+		$device_name,
+		$controller_config_order,
+		$controller_config_hotkeys,
+		$old_full_config_line,
+	) = get_controller_config($controller_mapping_file, $device_id);
 
-		open(my $cm_file, "<", "$controller_mapping_file") or die "Could read controller file";
-		open(my $temp_file, ">", "$controller_mapping_file.tmp") or die "Could not create temp file";
+	# To avoid reaching for something like an index map we just keep track
+	# of the insertion order of the hotkeys into the map manually
+	my @order = @$controller_config_order;
+	my %hotkeys = %$controller_config_hotkeys;
+	my @relevant_keys = grep(/leftx|lefty|rightx|righty|leftstick|rightstick/, @order);
 
-		while($line = <$cm_file>) {
-			if ($line =~ /^$device_id/) {
-				print $temp_file $reformed_line;
-			} else {
-				print $temp_file $line;
-			}
-		};
+	my $last_choice = "a";
+	while($item = draw_controller_menu(\@relevant_keys, \%hotkeys, $last_choice, "TEXT")) {
+		$last_choice = $item;
+		# "a \"BOTH:    SWAP\" " .
+		if ($item eq "a") {
+			%hotkeys = swap_keys("leftx", "rightx", %hotkeys);
+			%hotkeys = swap_keys("lefty", "righty", %hotkeys);
+		# "b \"BOTH:    SWAP TRIGGERS\" " .
+		} elsif ($item eq "b") {
+			%hotkeys = swap_keys("leftstick", "rightstick", %hotkeys);
+		# "c \"LEFT:    SWAP AXES\" " .
+		} elsif ($item eq "c") {
+			%hotkeys = swap_keys("leftx", "lefty", %hotkeys);
+		# "d \"RIGHT:   SWAP AXES\" " .
+		} elsif ($item eq "d") {
+			%hotkeys = swap_keys("rightx", "righty", %hotkeys);
+		# "e \"LEFT_X:  INVERT\" " .
+		} elsif ($item eq "e") {
+			%hotkeys = invert_key("leftx", %hotkeys);
+		# "f \"LEFT_Y:  INVERT\" " .
+		} elsif ($item eq "f") {
+			%hotkeys = invert_key("lefty", %hotkeys);
+		# "g \"RIGHT_X: INVERT\" " .
+		} elsif ($item eq "g") {
+			%hotkeys = invert_key("rightx", %hotkeys);
+		# "h \"RIGHT_Y: INVERT\" " .
+		} elsif ($item eq "h") {
+		# "i \"SAVE AND EXIT\" " .
+			%hotkeys = invert_key("righty", %hotkeys);
+		} elsif ($item eq "i") {
+			my $reformed_line = reform_line($device_id, $device_name, \@order, \%hotkeys);
+			last if ($old_full_config_line eq $reformed_line);
 
-		close($cm_file);
-		close($temp_file);
-		rename("$controller_mapping_file.tmp", $controller_mapping_file);
-		system("dialog --title \"FINISHED\" " .
-			"--msgbox " .
-			"\"Sucessfully updated config file\" " .
-			"10 30");
-		last;
-	}
-};
+			open(my $cm_file, "<", "$controller_mapping_file") or die "Could read controller file";
+			open(my $temp_file, ">", "$controller_mapping_file.tmp") or die "Could not create temp file";
+
+			while($line = <$cm_file>) {
+				if ($line =~ /^$device_id/) {
+					print $temp_file $reformed_line;
+				} else {
+					print $temp_file $line;
+				}
+			};
+
+			close($cm_file);
+			close($temp_file);
+			rename("$controller_mapping_file.tmp", $controller_mapping_file);
+			system("dialog --title \"FINISHED\" " .
+				"--msgbox " .
+				"\"Sucessfully updated config file\" " .
+				"10 30");
+			last;
+		}
+	};
+
+}
+
 
 # UTILS
 sub reform_line {
@@ -164,11 +183,17 @@ sub print_hotkeys {
 }
 
 # UI
-sub draw_main_menu {
-	my ($relevant_keys, $hotkeys, $last_choice) = @_;
+sub draw_controller_menu {
+	my ($relevant_keys, $hotkeys, $last_choice, $type) = @_;
 	my %hotkeys = %$hotkeys;
 	my @relevant_keys = @$relevant_keys;
-	my $current_bindings = print_hotkeys(\@relevant_keys, \%hotkeys);
+
+	my $current_bindings = "";
+	if ($type eq "TEXT") {
+		$current_bindings = print_hotkeys(\@relevant_keys, \%hotkeys);
+	} else {
+		# TODO: PRINT XML HOTKEYS
+	}
 	# Really janky workaround for having to get data out of command, we can't use
 	# backticks in the command to capture output, because the device isn't allowing
 	# the dialog to spawn, and the alternative is managing the menu in bash
@@ -185,9 +210,9 @@ sub draw_main_menu {
 		"0 0 9 " .
 		# OPTIONS
 		"a \"BOTH:    SWAP\" " .
-		"b \"BOTH:    SWAP BTNS\" " .
-		"c \"LEFT:    ROTATE\" " .
-		"d \"RIGHT:   ROTATE\" " .
+		"b \"BOTH:    SWAP TRIGGERS\" " .
+		"c \"LEFT:    SWAP AXES\" " .
+		"d \"RIGHT:   SWAP AXES\" " .
 		"e \"LEFT_X:  INVERT\" " .
 		"f \"LEFT_Y:  INVERT\" " .
 		"g \"RIGHT_X: INVERT\" " .
